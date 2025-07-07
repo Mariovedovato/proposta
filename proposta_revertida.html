@@ -324,4 +324,620 @@
 
                         {/* Seleção do Tipo de Valor */}
                         <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">TIPO DE VALOR:</lab
+                            <label className="block text-gray-700 text-sm font-bold mb-2">TIPO DE VALOR:</label>
+                            <div className="flex space-x-4">
+                                <label className="inline-flex items-center">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-blue-600"
+                                        name="valueType"
+                                        value="Hora"
+                                        checked={tempType === 'Hora'}
+                                        onChange={() => handleTypeChange('Hora')}
+                                    />
+                                    <span className="ml-2 text-gray-700">Hora</span>
+                                </label>
+                                <label className="inline-flex items-center">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-blue-600"
+                                        name="valueType"
+                                        value="Pacote"
+                                        checked={tempType === 'Pacote'}
+                                        onChange={() => handleTypeChange('Pacote')}
+                                    />
+                                    <span className="ml-2 text-gray-700">Pacote</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Edição do Valor Numérico */}
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">VALOR (R$):</label>
+                            <input
+                                ref={inputRef}
+                                type="tel" // Usar 'tel' para teclado numérico em mobile
+                                className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                // O valor do input agora é gerenciado pelo useEffect para evitar saltos de cursor
+                                onChange={handleInputChange}
+                                placeholder="Digite o valor"
+                                maxLength={inputMaxLength} // Limite de dígitos brutos
+                            />
+                        </div>
+
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition duration-200 font-medium"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 font-medium shadow-md"
+                            >
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Novo componente para editar a forma de pagamento
+        const PaymentMethodEditModal = ({ isOpen, onClose, currentPaymentMethod, onSave }) => {
+            console.log(`PaymentMethodEditModal isOpen:`, isOpen); // Debug log
+            if (!isOpen) return null;
+
+            // Extrai o valor antecipado da string atual
+            const parsePaymentMethod = (methodString) => {
+                const regex = /(\d+)% antecipado, (\d+)% na entrega./;
+                const match = methodString.match(regex);
+                if (match) {
+                    return {
+                        antecipado: match[1],
+                        entrega: match[2], // Manter para inicialização, mas não será editável
+                    };
+                }
+                return { antecipado: '50', entrega: '50' }; // Valores padrão se não conseguir parsear
+            };
+
+            const [tempPercentages, setTempPercentages] = useState(parsePaymentMethod(currentPaymentMethod));
+            const inputRefAntecipado = useRef(null);
+
+            useEffect(() => {
+                if (isOpen && inputRefAntecipado.current) {
+                    inputRefAntecipado.current.focus();
+                    setTempPercentages(parsePaymentMethod(currentPaymentMethod)); // Atualiza ao abrir
+                }
+            }, [isOpen, currentPaymentMethod]);
+
+            const handleChangeAntecipado = (e) => {
+                const value = e.target.value.replace(/\D/g, ''); // Apenas dígitos
+                const antecipadoNum = parseInt(value, 10) || 0;
+                const entregaNum = 100 - antecipadoNum;
+
+                setTempPercentages({
+                    antecipado: value.substring(0, 2), // Limita a 2 dígitos
+                    entrega: String(entregaNum),
+                });
+            };
+
+            const handleSave = () => {
+                const antecipado = tempPercentages.antecipado || '0';
+                const entrega = tempPercentages.entrega || '0'; // Já está calculado
+                const newPaymentMethod = `${antecipado}% antecipado, ${entrega}% na entrega.`;
+                onSave(newPaymentMethod);
+                onClose();
+            };
+
+            return (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800">EDITAR FORMA DE PAGAMENTO</h3>
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="antecipado">
+                                ANTECIPADO (%):
+                            </label>
+                            <input
+                                ref={inputRefAntecipado}
+                                type="tel" // Usar tel para teclado numérico em mobile
+                                id="antecipado"
+                                className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                value={tempPercentages.antecipado}
+                                onChange={handleChangeAntecipado}
+                                placeholder="Ex: 50"
+                                maxLength="2" // Limita a 2 dígitos
+                            />
+                        </div>
+                        {/* Campo "NA ENTREGA (%):" agora exibe o valor calculado, sem ser um input */}
+                        <div className="text-gray-700 text-sm mb-4">
+                            <span className="font-bold">NA ENTREGA (%):</span> {tempPercentages.entrega}% (calculado automaticamente)
+                        </div>
+
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition duration-200 font-medium"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 font-medium shadow-md"
+                            >
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Novo componente para editar o prazo de execução
+        const ExecutionTimeEditModal = ({ isOpen, onClose, currentExecutionTime, onSave }) => {
+            console.log(`ExecutionTimeEditModal isOpen:`, isOpen); // Debug log
+            if (!isOpen) return null;
+
+            const [tempType, setTempType] = useState(currentExecutionTime.type);
+            const [tempValue, setTempValue] = useState(currentExecutionTime.value);
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (isOpen) {
+                    setTempType(currentExecutionTime.type);
+                    setTempValue(currentExecutionTime.value);
+                    if (currentExecutionTime.type === 'dias' && inputRef.current) {
+                        inputRef.current.focus();
+                    }
+                }
+            }, [isOpen, currentExecutionTime]);
+
+            const handleValueChange = (e) => {
+                const cleanedValue = e.target.value.replace(/\D/g, '');
+                setTempValue(cleanedValue.substring(0, 2)); // Limita a 2 dígitos
+            };
+
+            const handleSave = () => {
+                onSave({ type: tempType, value: tempValue });
+                onClose();
+            };
+
+            return (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800">EDITAR PRAZO DE EXECUÇÃO</h3>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">TIPO DE PRAZO:</label>
+                            <div className="flex flex-col space-y-2">
+                                <label className="inline-flex items-center">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-blue-600"
+                                        name="executionType"
+                                        value="agendamento"
+                                        checked={tempType === 'agendamento'}
+                                        onChange={() => { setTempType('agendamento'); setTempValue(''); }} // Limpa o valor se mudar para agendamento
+                                    />
+                                    <span className="ml-2 text-gray-700">Conforme agendamento</span>
+                                </label>
+                                <label className="inline-flex items-center">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-blue-600"
+                                        name="executionType"
+                                        value="dias"
+                                        checked={tempType === 'dias'}
+                                        onChange={() => setTempType('dias')}
+                                    />
+                                    <span className="ml-2 text-gray-700">Definir dias úteis</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {tempType === 'dias' && (
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-bold mb-2">NÚMERO DE DIAS ÚTEIS:</label>
+                                <input
+                                    ref={inputRef}
+                                    type="tel" // Usa tel para teclado numérico em mobile
+                                    className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                    value={tempValue}
+                                    onChange={handleValueChange}
+                                    placeholder="Ex: 15"
+                                    maxLength="2" // Força 2 dígitos
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition duration-200 font-medium"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 font-medium shadow-md"
+                            >
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
+        // Componente principal do aplicativo
+        function App() {
+            // Estados para armazenar os dados do cliente
+            const [clientName, setClientName] = useState('');
+            const [clientCompany, setClientCompany] = useState('');
+            const [clientDoc, setClientDoc] = useState('');
+            const [clientContact, setClientContact] = useState('');
+            // Estado para o valor da visita técnica e seu tipo
+            const [visitValue, setVisitValue] = useState('160,00');
+            const [visitValueType, setVisitValueType] = useState(''); // Novo estado para o tipo de valor
+
+            // Novo estado para o texto da observação
+            const [observationText, setObservationText] = useState('Valor para região de até 50 km');
+            // Novo estado para a descrição do serviço selecionado na tabela de valores estimados
+            const [selectedServiceInTable, setSelectedServiceInTable] = useState('Clique para selecionar o serviço');
+
+            // Novo estado para a forma de pagamento
+            const [paymentMethod, setPaymentMethod] = useState('50% antecipado, 50% na entrega.');
+            // Novo estado para a validade da proposta
+            const [proposalValidity, setProposalValidity] = useState('10 dias úteis.');
+            // Novo estado para o prazo de execução
+            const [executionTime, setExecutionTime] = useState({ type: 'agendamento', value: '' }); // Estado estruturado
+
+
+            // Estados para controlar a visibilidade dos modais de entrada
+            const [isClientNameModalOpen, setIsClientNameModalOpen] = useState(false);
+            const [isClientCompanyModalOpen, setIsClientCompanyModalOpen] = useState(false);
+            const [isClientDocModalOpen, setIsClientDocModalOpen] = useState(false);
+            const [isClientContactModalOpen, setIsClientContactModalOpen] = useState(false);
+            // Novo estado para controlar a visibilidade do modal do valor da visita
+            const [isVisitValueEditModalOpen, setIsVisitValueEditModalOpen] = useState(false);
+
+            // Novo estado para controlar a visibilidade do modal de observação
+            const [isObservationModalOpen, setIsObservationModalOpen] = useState(false);
+            // Novo estado para controlar a visibilidade do modal de descrição de serviço (agora para a tabela)
+            const [isServiceDescriptionModalOpen, setIsServiceDescriptionModalOpen] = useState(false);
+            // Novo estado para controlar a visibilidade do modal de forma de pagamento
+            const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
+            // Novo estado para controlar a visibilidade do modal de validade da proposta
+            const [isProposalValidityModalOpen, setIsProposalValidityModalOpen] = useState(false);
+            // Novo estado para controlar a visibilidade do modal de prazo de execução
+            const [isExecutionTimeModalOpen, setIsExecutionTimeModalOpen] = useState(false);
+
+
+            // Referência para o conteúdo da proposta para gerar o PDF
+            const proposalRef = useRef(null);
+
+            // Novo estado para controlar se as bibliotecas de PDF foram carregadas
+            const [arePdfLibsLoaded, setArePdfLibsLoaded] = useState(false);
+
+            // Efeito para verificar se as bibliotecas de PDF foram carregadas
+            useEffect(() => {
+                console.log('Checking PDF libraries...'); // Debug log
+                const checkLibraries = () => {
+                    if (window.html2canvas && window.jsPDF) {
+                        setArePdfLibsLoaded(true);
+                        console.log("html2canvas e jsPDF carregados com sucesso!"); // Debug log
+                    } else {
+                        console.log("Aguardando html2canvas e jsPDF..."); // Debug log
+                        setTimeout(checkLibraries, 100); // Tenta novamente após um pequeno atraso
+                    }
+                };
+                checkLibraries();
+            }, []); // Executa apenas uma vez após a montagem do componente
+
+
+            // Função para gerar o PDF
+            const generatePdf = () => {
+                console.log('Attempting to generate PDF...'); // Debug log
+                // Verifica se as bibliotecas estão disponíveis globalmente (carregadas via CDN)
+                if (proposalRef.current && window.html2canvas && window.jsPDF) {
+                    window.html2canvas(proposalRef.current, { scale: 2 }).then(canvas => {
+                        const imgData = canvas.toDataURL('image/png');
+                        // Instancia jsPDF a partir do objeto global window
+                        const pdf = new window.jsPDF('p', 'mm', 'a4'); // 'p' para retrato, 'mm' para milímetros, 'a4' para tamanho A4
+                        const imgWidth = 210; // Largura A4 em mm
+                        const pageHeight = 297; // Altura A4 em mm
+                        const imgHeight = canvas.height * imgWidth / canvas.width;
+                        let heightLeft = imgHeight;
+                        let position = 0;
+
+                        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                        heightLeft -= pageHeight;
+
+                        while (heightLeft >= 0) {
+                            position = heightLeft - imgData.height; // Ajuste para a altura real da imagem
+                            pdf.addPage();
+                            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                            heightLeft -= pageHeight;
+                        }
+                        pdf.save('proposta-tecnica.pdf');
+                        console.log('PDF generated successfully!'); // Debug log
+                    }).catch(error => {
+                        console.error("Erro ao capturar o canvas para PDF:", error); // Debug log
+                    });
+                } else {
+                    console.error("As bibliotecas html2canvas ou jspdf não foram carregadas. O botão deveria estar desativado."); // Debug log
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans flex justify-center">
+                    <div ref={proposalRef} className="bg-white rounded-xl shadow-lg p-6 sm:p-8 lg:p-10 w-full max-w-4xl border border-gray-200">
+                        {/* Botão para Gerar PDF */}
+                        <div className="flex justify-end mb-4">
+                            <button
+                                onClick={generatePdf}
+                                className={`px-6 py-3 bg-green-600 text-white rounded-lg transition duration-200 font-semibold shadow-md flex items-center space-x-2 ${!arePdfLibsLoaded ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
+                                disabled={!arePdfLibsLoaded} // Desabilita o botão se as libs não estiverem carregadas
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span>{arePdfLibsLoaded ? "Gerar PDF" : "Carregando PDF..."}</span> {/* Texto dinâmico */}
+                            </button>
+                        </div>
+
+                        {/* Cabeçalho da Proposta */}
+                        <header className="mb-8 pb-6 border-b border-gray-200">
+                            <h1 className="text-3xl sm:text-4xl font-extrabold text-blue-700 mb-2 text-center">PROPOSTA TÉCNICA ORÇAMENTO DE SERVIÇOS</h1>
+                            <p className="text-lg text-gray-700 mb-1">Empresa: <span className="font-semibold">Vamplas Máquinas & Consultoria</span></p>
+                            <p className="text-lg text-gray-700 mb-1">Responsável: <span className="font-semibold">Mario Vedovato</span></p>
+                            <p className="text-md text-gray-600 mb-1">Especialista em Manutenção Industrial, Automação e Consultoria Técnica</p>
+                            <p className="text-md text-gray-600">Contato: <span className="font-semibold">(19) 999 18-5624</span> | E-mail: <span className="font-semibold">vamplasmaquinas@gmail.com</span></p>
+                        </header>
+
+                        {/* Informações do Cliente */}
+                        <section className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                            <h2 className="text-xl sm:text-2xl font-bold text-blue-700 mb-4">DADOS DO CLIENTE</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Campo CLIENTE */}
+                                <div className="flex flex-col">
+                                    <label className="text-gray-700 font-medium mb-1">CLIENTE:</label>
+                                    <div
+                                        className="bg-white p-3 border border-gray-300 rounded-md cursor-pointer hover:border-blue-500 transition duration-200 flex items-center justify-between"
+                                        onClick={() => { console.log('Clicked CLIENTE field'); setIsClientNameModalOpen(true); }}
+                                    >
+                                        <span className="text-gray-800 flex-grow">{clientName.toUpperCase() || 'Clique para adicionar o nome do cliente'}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.827-2.828z" />
+                                        </svg>
+                                    </div>
+                                    <InputModal
+                                        isOpen={isClientNameModalOpen}
+                                        onClose={() => setIsClientNameModalOpen(false)}
+                                        title="NOME DO CLIENTE"
+                                        value={clientName}
+                                        onSave={setClientName}
+                                    />
+                                </div>
+
+                                {/* Campo EMPRESA */}
+                                <div className="flex flex-col">
+                                    <label className="text-gray-700 font-medium mb-1">EMPRESA:</label>
+                                    <div
+                                        className="bg-white p-3 border border-gray-300 rounded-md cursor-pointer hover:border-blue-500 transition duration-200 flex items-center justify-between"
+                                        onClick={() => { console.log('Clicked EMPRESA field'); setIsClientCompanyModalOpen(true); }}
+                                    >
+                                        <span className="text-gray-800 flex-grow">{clientCompany.toUpperCase() || 'Clique para adicionar o nome da empresa'}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.827-2.828z" />
+                                        </svg>
+                                    </div>
+                                    <InputModal
+                                        isOpen={isClientCompanyModalOpen}
+                                        onClose={() => setIsClientCompanyModalOpen(false)}
+                                        title="EMPRESA DO CLIENTE"
+                                        value={clientCompany}
+                                        onSave={setClientCompany}
+                                    />
+                                </div>
+
+                                {/* Campo CNPJ/CPF */}
+                                <div className="flex flex-col">
+                                    <label className="text-gray-700 font-medium mb-1">CNPJ/CPF:</label>
+                                    <div
+                                        className="bg-white p-3 border border-gray-300 rounded-md cursor-pointer hover:border-blue-500 transition duration-200 flex items-center justify-between"
+                                        onClick={() => { console.log('Clicked CNPJ/CPF field'); setIsClientDocModalOpen(true); }}
+                                    >
+                                        <span className="text-gray-800 flex-grow">{clientDoc.toUpperCase() || 'Clique para adicionar o CNPJ/CPF'}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.827-2.828z" />
+                                        </svg>
+                                    </div>
+                                    <InputModal
+                                        isOpen={isClientDocModalOpen}
+                                        onClose={() => setIsClientDocModalOpen(false)}
+                                        title="CNPJ/CPF DO CLIENTE"
+                                        value={clientDoc}
+                                        onSave={setClientDoc}
+                                        formatFn={formatCnpjCpf} // Aplica a função de formatação
+                                        type="tel" // Usa 'tel' para teclados numéricos em mobile
+                                    />
+                                </div>
+
+                                {/* Campo CONTATO */}
+                                <div className="flex flex-col">
+                                    <label className="text-gray-700 font-medium mb-1">CONTATO:</label>
+                                    <div
+                                        className="bg-white p-3 border border-gray-300 rounded-md cursor-pointer hover:border-blue-500 transition duration-200 flex items-center justify-between"
+                                        onClick={() => { console.log('Clicked CONTATO field'); setIsClientContactModalOpen(true); }}
+                                    >
+                                        <span className="text-gray-800 flex-grow">{clientContact.toUpperCase() || 'Clique para adicionar o contato'}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.827-2.828z" />
+                                        </svg>
+                                    </div>
+                                    <InputModal
+                                        isOpen={isClientContactModalOpen}
+                                        onClose={() => setIsClientContactModalOpen(false)}
+                                        title="CONTATO DO CLIENTE"
+                                        value={clientContact}
+                                        onSave={setClientContact}
+                                        type="text" // Pode ser 'tel' ou 'email' dependendo do que você prefere
+                                    />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Descrição dos Serviços - Exibindo apenas os títulos com numeração */}
+                        <section className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                            <h2 className="text-xl sm:text-2xl font-bold text-blue-700 mb-4">Descrição dos Serviços:</h2>
+                            <ul className="list-disc list-inside text-gray-700 space-y-2">
+                                <li>1. Visita técnica</li>
+                                <li>2. Consultoria técnica</li>
+                                <li>3. Instalação de máquinas</li>
+                                <li>4. Treinamentos técnicos</li>
+                                <li>5. Otimização de processos</li>
+                                <li>6. Manutenção</li>
+                            </ul>
+                        </section>
+
+                        {/* Valores Estimados */}
+                        <section className="mb-8">
+                            <h2 className="text-xl sm:text-2xl font-bold text-blue-700 mb-4">Valores Estimados:</h2>
+                            <div className="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-blue-100">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-sm font-semibold text-blue-800 uppercase tracking-wider rounded-tl-lg">Serviço</th>
+                                            <th className="py-3 px-4 text-left text-sm font-semibold text-blue-800 uppercase tracking-wider">Valor (R$)</th>
+                                            <th className="py-3 px-4 text-left text-sm font-semibold text-blue-800 uppercase tracking-wider rounded-tr-lg">Observações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        <tr className="hover:bg-gray-50 transition duration-150 ease-in-out">
+                                            {/* Célula de Serviço agora é clicável e exibe o serviço selecionado */}
+                                            <td
+                                                className="py-3 px-4 text-gray-700 cursor-pointer hover:bg-gray-100 transition duration-200"
+                                                onClick={() => { console.log('Clicked Service field'); setIsServiceDescriptionModalOpen(true); }}
+                                            >
+                                                {selectedServiceInTable}
+                                            </td>
+                                            <td
+                                                className="py-3 px-4 whitespace-nowrap text-gray-900 font-semibold cursor-pointer hover:bg-gray-100 transition duration-200"
+                                                onClick={() => { console.log('Clicked Visit Value field'); setIsVisitValueEditModalOpen(true); }} // Abre o novo modal de edição
+                                            >
+                                                {visitValue} {visitValueType && `(${visitValueType})`} {/* Exibe o valor e o tipo */}
+                                            </td>
+                                            <td
+                                                className="py-3 px-4 text-gray-600 cursor-pointer hover:bg-gray-100 transition duration-200"
+                                                onClick={() => { console.log('Clicked Observation field'); setIsObservationModalOpen(true); }}
+                                            >
+                                                {observationText}
+                                            </td>
+                                        </tr>
+                                        {/* Você pode adicionar mais linhas de serviço aqui conforme necessário */}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Modais são renderizados fora da tabela, mas dentro da seção ou do componente App */}
+                            {/* Modal para editar o valor e o tipo da visita técnica */}
+                            <ValueEditModal
+                                isOpen={isVisitValueEditModalOpen}
+                                onClose={() => setIsVisitValueEditModalOpen(false)}
+                                title="EDITAR VALOR" // Título passado para o modal
+                                currentAmount={visitValue}
+                                currentType={visitValueType}
+                                onSave={(newAmount, newType) => {
+                                    setVisitValue(newAmount);
+                                    setVisitValueType(newType);
+                                }}
+                            />
+                            {/* Modal para selecionar a observação */}
+                            <ObservationSelectModal
+                                isOpen={isObservationModalOpen}
+                                onClose={() => setIsObservationModalOpen(false)}
+                                title="SELECIONE A OBSERVAÇÃO"
+                                options={[
+                                    'Valor para região de até 50 km',
+                                    'Não será cobrado deslocamento',
+                                ]}
+                                onSelect={setObservationText}
+                            />
+                            {/* Modal para selecionar a descrição do serviço (agora para a tabela de valores estimados) */}
+                            <ServiceDescriptionSelectModal
+                                isOpen={isServiceDescriptionModalOpen}
+                                onClose={() => setIsServiceDescriptionModalOpen(false)}
+                                title="SELECIONE O SERVIÇO"
+                                options={[
+                                    '1. Visita técnica diagnóstica – análise in loco de equipamentos e processo.',
+                                    '2. Consultoria técnica – orientação sobre manutenção, processo e operação.',
+                                    '3. Instalação de máquinas – montagem, testes e comissionamento.',
+                                    '4. Treinamentos técnicos – capacitação de operadores e manutenção.',
+                                    '5. Otimização de processos – aumento de produtividade e eficiência.',
+                                    '6. Manutenção – lubrificação, intervenção mecânica e elétrica preventiva ou corretiva.',
+                                ]}
+                                onSelect={setSelectedServiceInTable}
+                            />
+                        </section>
+
+                        {/* Condições Comerciais */}
+                        <section className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                            <h2 className="text-xl sm:text-2xl font-bold text-blue-700 mb-4">Condições Comerciais:</h2>
+                            <ul className="list-disc list-inside text-gray-700 space-y-2">
+                                <li className="cursor-pointer hover:text-blue-700 transition duration-200" onClick={() => { console.log('Clicked Payment Method field'); setIsPaymentMethodModalOpen(true); }}>
+                                    <span className="font-semibold">Forma de pagamento:</span> {paymentMethod}
+                                </li>
+                                <li className="cursor-pointer hover:text-blue-700 transition duration-200" onClick={() => { console.log('Clicked Proposal Validity field'); setIsProposalValidityModalOpen(true); }}>
+                                    <span className="font-semibold">Validade da proposta:</span> {proposalValidity}
+                                </li>
+                                <li className="cursor-pointer hover:text-blue-700 transition duration-200" onClick={() => { console.log('Clicked Execution Time field'); setIsExecutionTimeModalOpen(true); }}>
+                                    <span className="font-semibold">Prazo de execução: </span>
+                                    {executionTime.type === 'agendamento' ? 'Conforme agendamento.' : `${executionTime.value} dias úteis.`}
+                                </li>
+                            </ul>
+                            {/* Modal para editar a forma de pagamento */}
+                            <PaymentMethodEditModal
+                                isOpen={isPaymentMethodModalOpen}
+                                onClose={() => setIsPaymentMethodModalOpen(false)}
+                                currentPaymentMethod={paymentMethod}
+                                onSave={setPaymentMethod}
+                            />
+                            {/* Modal para editar a validade da proposta */}
+                            <InputModal
+                                isOpen={isProposalValidityModalOpen}
+                                onClose={() => setIsProposalValidityModalOpen(false)}
+                                title="VALIDADE DA PROPOSTA"
+                                value={proposalValidity}
+                                onSave={(value) => setProposalValidity(value ? `${value} dias úteis.` : '')} // Adiciona "dias úteis." ao salvar
+                                formatFn={formatTwoDigitNumberInput} // Aplica a formatação de 2 dígitos
+                                type="tel" // Usa 'tel' para teclados numéricos em mobile
+                            />
+                            {/* Modal para editar o prazo de execução */}
+                            <ExecutionTimeEditModal
+                                isOpen={isExecutionTimeModalOpen}
+                                onClose={() => setIsExecutionTimeModalOpen(false)}
+                                currentExecutionTime={executionTime}
+                                onSave={setExecutionTime}
+                            />
+                        </section>
+
+                        {/* Assinatura */}
+                        <section className="pt-6 border-t border-gray-200 text-center">
+                            <div className="mt-8 mb-4">
+                                <span className="inline-block border-b-2 border-gray-400 w-64 pb-1 text-gray-700"></span>
+                            </div>
+                            <p className="text-gray-700 font-medium">Assinatura do Responsável Técnico</p>
+                        </section>
+                    </div>
+                </div>
+            );
+        }
+
+        // Renderiza o componente React no elemento com id 'root'
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
